@@ -1,0 +1,781 @@
+
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NET_RUNNER // Cyber Network Diagnostic Simulator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --terminal-bg: #0d1117;
+            --neon-green: #10b981;
+            --neon-cyan: #00f0ff;
+            --neon-pink: #ec4899;
+            --neon-amber: #f59e0b;
+            --neon-purple: #a855f7;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            font-family: 'Fira Code', monospace;
+            color: #c9d1d9;
+            overflow-x: hidden;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Scanline effect */
+        .scanlines {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.03),
+                rgba(0, 255, 0, 0.01),
+                rgba(0, 0, 255, 0.03)
+            );
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+
+        /* Terminal Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--neon-cyan);
+        }
+
+        /* Cyber Glows */
+        .glow-cyan {
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        }
+        .glow-green {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+        }
+        .glow-pink {
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.3);
+        }
+        .text-glow-cyan {
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+        }
+        .text-glow-green {
+            text-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+        }
+
+        .crt-monitor {
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            position: relative;
+        }
+
+        .crt-monitor::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: rgba(18, 16, 16, 0.1);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Typing cursor */
+        .cursor-blink::after {
+            content: "█";
+            animation: blink 1s infinite;
+            margin-left: 2px;
+            color: var(--neon-cyan);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Custom Buttons */
+        .cyber-btn {
+            background: rgba(13, 17, 23, 0.8);
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            transition: all 0.2s ease;
+        }
+        .cyber-btn:hover:not(:disabled) {
+            background: rgba(0, 240, 255, 0.15);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+            transform: translateY(-1px);
+        }
+        .cyber-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            border-color: #374151;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-2 md:p-4 bg-[#090d16] text-slate-300">
+    <!-- Scanline overlay -->
+    <div class="fixed inset-0 scanlines z-50 pointer-events-none"></div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="max-w-7xl w-full mx-auto flex flex-col flex-grow crt-monitor bg-[#0d1117] rounded-lg border border-cyan-500/30 overflow-hidden shadow-2xl relative">
+        
+        <!-- TOP HEADER / STATUS BAR -->
+        <header class="bg-[#161b22] border-b border-cyan-500/30 px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+            <!-- Brand -->
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-cyan-500/10 rounded-md border border-cyan-500/40 text-cyan-400">
+                    <i class="fa-solid me-1 fa-terminal text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-orbitron font-bold text-lg md:text-xl text-cyan-400 tracking-wider text-glow-cyan flex items-center gap-2">
+                        NET_RUNNER <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">v2.04</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">TechMais Soluções // Central de Suporte & Diagnóstico</p>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="flex flex-wrap items-center gap-4 text-xs md:text-sm">
+                <!-- Level / Mission -->
+                <div class="bg-[#0d1117] px-3 py-1.5 rounded border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-purple-400"></i>
+                    <span class="text-slate-400">MISSÃO:</span>
+                    <span id="stat-mission" class="font-bold text-purple-400">1 / 5</span>
+                </div>
+
+                <!-- XP -->
+                <div class="bg-[#0d1117] px-3 py-1.5 rounded border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-amber-400"></i>
+                    <span class="text-slate-400">XP:</span>
+                    <span id="stat-xp" class="font-bold text-amber-400">0</span>
+                </div>
+
+                <!-- Solved Tickets -->
+                <div class="bg-[#0d1117] px-3 py-1.5 rounded border border-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                    <span class="text-slate-400">CHAMADOS:</span>
+                    <span id="stat-tickets" class="font-bold text-emerald-400">0 / 5</span>
+                </div>
+
+                <!-- Sound Toggle -->
+                <button id="btn-sound" onclick="toggleSound()" class="p-1.5 bg-[#0d1117] rounded border border-slate-700 text-slate-400 hover:text-cyan-400 transition" title="Alternar Som">
+                    <i class="fa-solid fa-volume-high text-sm"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN TERMINAL AREA -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 flex-grow overflow-hidden min-h-[500px]">
+            
+            <!-- LEFT PANEL: TICKET INFORMATION & NETWORK SCHEMATIC (5 cols) -->
+            <div class="lg:col-span-5 bg-[#161b22]/50 border-r border-slate-800 p-4 flex flex-col justify-between gap-4 overflow-y-auto">
+                <div>
+                    <!-- Active Mission Card -->
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs uppercase font-orbitron tracking-widest text-cyan-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-ticket"></i> Chamado Ativo
+                            </span>
+                            <span id="ticket-id" class="text-xs font-mono text-slate-500">#TK-1092</span>
+                        </div>
+                        <div id="ticket-card" class="bg-[#0d1117] p-3.5 rounded-lg border border-cyan-500/20 text-xs leading-relaxed space-y-2">
+                            <h3 id="ticket-title" class="font-bold text-sm text-cyan-300">Carregando Missão...</h3>
+                            <p id="ticket-user" class="text-slate-400"><strong>Usuário:</strong> --</p>
+                            <p id="ticket-desc" class="text-slate-300">Aguardando inicialização do sistema...</p>
+                        </div>
+                    </div>
+
+                    <!-- Target Machine Specs / Topology Visual -->
+                    <div class="mb-4">
+                        <span class="text-xs uppercase font-orbitron tracking-widest text-purple-400 flex items-center gap-1.5 mb-2">
+                            <i class="fa-solid fa-network-wired"></i> Esquema da Estação Remota
+                        </span>
+                        <div class="bg-[#0d1117] p-3 rounded-lg border border-purple-500/20 text-xs space-y-2 font-mono">
+                            <div class="flex justify-between border-b border-slate-800 pb-1">
+                                <span class="text-slate-500">HOSTNAME:</span>
+                                <span id="spec-host" class="text-purple-300">BANCADA-03</span>
+                            </div>
+                            <div class="flex justify-between border-b border-slate-800 pb-1">
+                                <span class="text-slate-500">IP ATUAL:</span>
+                                <span id="spec-ip" class="text-emerald-400">Checking...</span>
+                            </div>
+                            <div class="flex justify-between border-b border-slate-800 pb-1">
+                                <span class="text-slate-500">MÁSCARA:</span>
+                                <span id="spec-mask" class="text-slate-300">255.255.255.0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">GATEWAY:</span>
+                                <span id="spec-gateway" class="text-slate-300">192.168.1.1</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Available CLI Tools Cheat Sheet -->
+                    <div>
+                        <span class="text-xs uppercase font-orbitron tracking-widest text-emerald-400 flex items-center gap-1.5 mb-2">
+                            <i class="fa-solid fa-toolbox"></i> Ferramentas CLI Recomendadas
+                        </span>
+                        <div class="grid grid-cols-2 gap-1.5 text-[11px] font-mono">
+                            <button onclick="insertCommand('ipconfig /all')" class="bg-[#0d1117] hover:bg-emerald-500/10 text-slate-300 border border-slate-800 hover:border-emerald-500/40 p-1.5 rounded text-left transition">
+                                <strong class="text-emerald-400">ipconfig</strong>: Dados IP/DHCP
+                            </button>
+                            <button onclick="insertCommand('ping 192.168.1.1')" class="bg-[#0d1117] hover:bg-emerald-500/10 text-slate-300 border border-slate-800 hover:border-emerald-500/40 p-1.5 rounded text-left transition">
+                                <strong class="text-emerald-400">ping</strong>: Testar Link
+                            </button>
+                            <button onclick="insertCommand('tracert 8.8.8.8')" class="bg-[#0d1117] hover:bg-emerald-500/10 text-slate-300 border border-slate-800 hover:border-emerald-500/40 p-1.5 rounded text-left transition">
+                                <strong class="text-emerald-400">tracert</strong>: Rota/Saltos
+                            </button>
+                            <button onclick="insertCommand('pathping 8.8.8.8')" class="bg-[#0d1117] hover:bg-emerald-500/10 text-slate-300 border border-slate-800 hover:border-emerald-500/40 p-1.5 rounded text-left transition">
+                                <strong class="text-emerald-400">pathping</strong>: Análise Perdas
+                            </button>
+                            <button onclick="insertCommand('netstat -ano')" class="bg-[#0d1117] hover:bg-emerald-500/10 text-slate-300 border border-slate-800 hover:border-emerald-500/40 p-1.5 rounded text-left transition">
+                                <strong class="text-emerald-400">netstat</strong>: Portas/TCP
+                            </button>
+                            <button onclick="insertCommand('arp -a')" class="bg-[#0d1117] hover:bg-emerald-500/10 text-slate-300 border border-slate-800 hover:border-emerald-500/40 p-1.5 rounded text-left transition">
+                                <strong class="text-emerald-400">arp</strong>: Tabela MAC
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Status -->
+                <div class="text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-800 pt-2">
+                    <span><i class="fa-solid fa-shield-halved text-emerald-500"></i> Terminal Seguro Active</span>
+                    <span>UNC & SMB/NTFS Mode</span>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: INTERACTIVE TERMINAL CONSOLE & RESOLUTION OPTIONS (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col justify-between bg-[#0d1117] p-4 relative overflow-hidden">
+                
+                <!-- Terminal Output Window -->
+                <div id="terminal-output" class="flex-grow overflow-y-auto space-y-2 mb-4 font-mono text-xs md:text-sm p-3 bg-[#090d16] rounded-lg border border-slate-800 max-h-[350px] md:max-h-[420px]">
+                    <div class="text-slate-500">// NET_RUNNER Shell v2.04 Initializing...</div>
+                    <div class="text-cyan-400">// Digite um comando CLI ou selecione uma ação técnica abaixo para diagnosticar o chamado.</div>
+                </div>
+
+                <!-- Interactive Command Prompt Input -->
+                <div class="mb-4">
+                    <form id="terminal-form" onsubmit="handleCommandSubmit(event)" class="flex items-center gap-2 bg-[#161b22] p-2 rounded-lg border border-cyan-500/30 focus-within:border-cyan-400 transition">
+                        <span class="text-emerald-400 font-bold text-xs md:text-sm pl-1">C:\Users\NetRunner&gt;</span>
+                        <input type="text" id="cmd-input" placeholder="Digite um comando (ex: ipconfig, ping, tracert...)" class="bg-transparent text-cyan-300 placeholder-slate-600 focus:outline-none w-full font-mono text-xs md:text-sm" autocomplete="off" spellcheck="false">
+                        <button type="submit" class="px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/40 rounded text-xs font-bold transition">
+                            <i class="fa-solid fa-terminal me-1"></i> EXECUTAR
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Multiple Choice Decision Panel (How to Solve Ticket) -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs uppercase font-orbitron tracking-widest text-amber-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-code-branch"></i> Diagnóstico Final & Ação Corretiva
+                        </span>
+                        <span class="text-[11px] text-slate-500">Escolha a solução correta baseada no seu diagnóstico CLI</span>
+                    </div>
+
+                    <div id="options-container" class="grid grid-cols-1 gap-2">
+                        <!-- Options generated dynamically -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- BOTTOM STATUS BAR / TIP -->
+        <footer class="bg-[#161b22] border-t border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-slate-400">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-lightbulb text-amber-400"></i>
+                <span id="footer-tip">Dica CLI: O IP 169.254.x.x (APIPA) indica que a máquina não conseguiu contactar o Servidor DHCP!</span>
+            </div>
+            <div class="font-mono text-[11px] text-slate-500">
+                TechMais Soluções &copy; 2026
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- MODAL DE VITÓRIA / CERTIFICADO DE CONCLUSÃO -->
+    <div id="victory-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden">
+        <div class="max-w-2xl w-full bg-[#0d1117] border-2 border-emerald-500/60 rounded-xl p-6 md:p-8 text-center shadow-2xl relative overflow-hidden crt-monitor">
+            
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl"></div>
+            
+            <div class="mb-4 inline-block p-4 bg-emerald-500/10 rounded-full border border-emerald-500/30 text-emerald-400 text-3xl md:text-4xl">
+                <i class="fa-solid fa-award"></i>
+            </div>
+
+            <h2 class="font-orbitron text-2xl md:text-3xl font-bold text-emerald-400 tracking-wide text-glow-green mb-2">
+                MISSÃO CUMPRIDA!
+            </h2>
+            <p class="text-sm text-slate-300 mb-6">
+                Você diagnosticou e resolveu com sucesso todos os 5 chamados de rede da TechMais Soluções!
+            </p>
+
+            <!-- Stats Box -->
+            <div class="grid grid-cols-3 gap-3 bg-[#161b22] p-4 rounded-lg border border-slate-800 mb-6 font-mono text-xs md:text-sm">
+                <div>
+                    <span class="text-slate-500 block">XP TOTAL</span>
+                    <strong id="modal-xp" class="text-amber-400 text-lg">500</strong>
+                </div>
+                <div>
+                    <span class="text-slate-500 block">CHAMADOS</span>
+                    <strong class="text-emerald-400 text-lg">5 / 5</strong>
+                </div>
+                <div>
+                    <span class="text-slate-500 block">STATUS</span>
+                    <strong class="text-cyan-400 text-lg">CYBER NETRUNNER</strong>
+                </div>
+            </div>
+
+            <!-- Instructions to Upload to GitHub Pages -->
+            <div class="text-left bg-[#090d16] p-4 rounded-lg border border-cyan-500/30 text-xs font-mono space-y-2 mb-6">
+                <div class="text-cyan-400 font-bold flex items-center gap-2 border-b border-slate-800 pb-1">
+                    <i class="fa-brands fa-github text-sm"></i> Como publicar este jogo no seu GitHub Pages:
+                </div>
+                <ol class="list-decimal list-inside text-slate-300 space-y-1">
+                    <li>Crie um repositório público no GitHub (ex: <code class="text-emerald-400">netrunner-game</code>).</li>
+                    <li>Suba este arquivo com o nome exato <code class="text-amber-400">index.html</code>.</li>
+                    <li>Acesse <strong>Settings &gt; Pages</strong> no seu repositório.</li>
+                    <li>Em <strong>Branch</strong>, selecione <code class="text-cyan-400">main</code> (ou master) e salve.</li>
+                    <li>Pronto! Seu jogo estará online em alguns segundos!</li>
+                </ol>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-center gap-3">
+                <button onclick="restartGame()" class="px-5 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 rounded-lg font-bold text-sm transition">
+                    <i class="fa-solid fa-rotate-right me-1"></i> JOGAR NOVAMENTE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT GAME LOGIC -->
+    <script>
+        // Sound System (Web Audio API synthetizer for retro SFX)
+        let soundEnabled = true;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'type') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.05);
+                } else if (type === 'success') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+                    osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); // G5
+                    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.35);
+                } else if (type === 'error') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(110, audioCtx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.25);
+                }
+            } catch(e) { console.log(e); }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('btn-sound');
+            if (soundEnabled) {
+                btn.innerHTML = '<i class="fa-solid fa-volume-high text-sm"></i>';
+                btn.classList.remove('text-slate-600');
+                btn.classList.add('text-slate-400');
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-sm"></i>';
+                btn.classList.add('text-slate-600');
+            }
+        }
+
+        // Game State
+        let currentMissionIndex = 0;
+        let scoreXp = 0;
+        let solvedTickets = 0;
+
+        // Missions Database (Based on Lessons 07 & 08)
+        const missions = [
+            {
+                id: "TK-101",
+                title: "Sem Acesso à Internet / Endereço IP Estranho",
+                user: "Lucas (Desenvolvimento - Bancada 02)",
+                desc: "O usuário relata que não consegue navegar na web nem acessar arquivos locais. O ícone de rede exibe um triângulo amarelo de aviso.",
+                host: "BANCADA-02",
+                ip: "169.254.112.45",
+                mask: "255.255.0.0",
+                gateway: "192.168.1.1",
+                tip: "Dica: Execute 'ipconfig /all' para examinar o IP atribuído e verifique se o DHCP respondeu.",
+                cliResponses: {
+                    "ipconfig": "\nConfiguração de IP do Windows:\n\nAdaptador Ethernet Rede Local:\n   Endereço IPv4. . . . . . . . . . . . : 169.254.112.45 (APIPA)\n   Mascara de Sub-rede . . . . . . . . . : 255.255.0.0\n   Gateway Padrao . . . . . . . . . . . : \n   Servidor DHCP. . . . . . . . . . . . : Não alcançado",
+                    "ipconfig /all": "\nConfiguração de IP do Windows:\n\nAdaptador Ethernet Rede Local:\n   Descrição. . . . . . . . . . . . . . : Realtek PCIe GbE Family Controller\n   Endereço Físico (MAC). . . . . . . . : 00-1A-2B-3C-4D-5E\n   DHCP Ativado. . . . . . . . . . . . . : Sim\n   Endereço IPv4 de Configuração Automática: 169.254.112.45(Preferencial)\n   Mascara de Sub-rede . . . . . . . . . : 255.255.0.0\n   Gateway Padrao . . . . . . . . . . . : \n   Servidor DNS . . . . . . . . . . . . : 192.168.1.1",
+                    "ping 192.168.1.1": "\nDisparando 192.168.1.1 com 32 bytes de dados:\nEsgotado o tempo limite da solicitação.\nEsgotado o tempo limite da solicitação.\nEsgotado o tempo limite da solicitação.\n\nEstatísticas do Ping:\n    Pacotes: Enviados = 3, Recebidos = 0, Perdidos = 3 (100% de perda).",
+                    "tracert 8.8.8.8": "\nRastreando a rota para dns.google [8.8.8.8]\ncom no máximo 30 saltos:\n  1  Transmissão falhou. General failure.\n\nRastreamento concluído.",
+                    "pathping 8.8.8.8": "\nRastreando a rota para 8.8.8.8...\n  1  Falha no envio do pacote. Código de erro: 1231.",
+                    "netstat -ano": "\nConexões ativas:\n  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       844\n  TCP    169.254.112.45:49670   169.254.255.255:137    SYN_SENT        1104",
+                    "arp -a": "\nNenhuma entrada ARP encontrada."
+                },
+                options: [
+                    {
+                        text: "O computador recebeu IP válido via DHCP. O problema é bloqueio no firewall de borda.",
+                        correct: false,
+                        feedback: "INCORRETO! O IP 169.254.x.x é um endereço APIPA gerado automaticamente quando o computador NÃO consegue contato com o servidor DHCP."
+                    },
+                    {
+                        text: "A máquina recebeu um IP APIPA (169.254.x.x) por falha de comunicação com o servidor DHCP. Solução: Reconectar o cabo de rede/porta do switch e executar 'ipconfig /release' e '/renew'.",
+                        correct: true,
+                        feedback: "CORRETO! Excelente diagnóstico! O IP 169.254.x.x indica que a estação ficou isolada do servidor DHCP e atribuiu a si mesma um IP automático reservado (APIPA)."
+                    },
+                    {
+                        text: "O problema é falta de resolução de nomes DNS. Solução: Configurar o arquivo 'hosts' manualmente.",
+                        correct: false,
+                        feedback: "INCORRETO! Sem um IP e Gateway válidos na mesma sub-rede, nenhum tráfego IP (inclusive DNS) funcionará."
+                    }
+                ]
+            },
+            {
+                id: "TK-102",
+                title: "Acesso à Pasta do Projeto de outra Bancada via UNC",
+                user: "Mariana (Design - Bancada 05)",
+                desc: "Mariana precisa enviar arquivos pesados para o projeto da 'Bancada 01' (IP 192.168.1.15) sem usar Pen Drive. A pasta foi configurada como uma partilha oculta chamada 'Projetos_Seguros$'.",
+                host: "BANCADA-05",
+                ip: "192.168.1.50",
+                mask: "255.255.255.0",
+                gateway: "192.168.1.1",
+                tip: "Dica: Lembre-se da sintaxe UNC: \\\\IP_DA_MÁQUINA\\NOME_DA_PARTILHA e o comportamento do símbolo $.",
+                cliResponses: {
+                    "ipconfig": "\nAdaptador Ethernet Rede Local:\n   Endereço IPv4. . . . . . . . . . . . : 192.168.1.50\n   Mascara de Sub-rede . . . . . . . . . : 255.255.255.0\n   Gateway Padrao . . . . . . . . . . . : 192.168.1.1",
+                    "ping 192.168.1.15": "\nDisparando 192.168.1.15 com 32 bytes de dados:\nResposta de 192.168.1.15: bytes=32 tempo=1ms TTL=128\nResposta de 192.168.1.15: bytes=32 tempo=1ms TTL=128\n\nEstatísticas do Ping: Pacotes: Enviados = 2, Recebidos = 2, Perdidos = 0 (0% de perda).",
+                    "tracert 192.168.1.15": "\nRastreando a rota para BANCADA-01 [192.168.1.15]:\n  1    <1 ms    <1 ms    <1 ms  BANCADA-01 [192.168.1.15]\n\nRastreamento concluído.",
+                    "arp -a": "\nInterface: 192.168.1.50 --- 0x3\n  Endereço de IP       Endereço Físico (MAC)   Tipo\n  192.168.1.1          00-11-22-33-44-55       dinâmico\n  192.168.1.15         00-aa-bb-cc-dd-ee       dinâmico"
+                },
+                options: [
+                    {
+                        text: "Pressionar 'Win+R' e digitar 'http://192.168.1.15/Projetos_Seguros$' no navegador.",
+                        correct: false,
+                        feedback: "INCORRETO! O protocolo HTTP é para páginas web. Para acessar pastas compartilhadas na rede local Windows, usa-se o caminho UNC (Universal Naming Convention)."
+                    },
+                    {
+                        text: "Pressionar 'Win+R' e digitar '\\\\192.168.1.15\\Projetos_Seguros$' no 'Executar'. O '$' é necessário porque a pasta foi configurada como partilha oculta.",
+                        correct: true,
+                        feedback: "EXCELENTE! A sintaxe UNC \\\\IP\\Partilha e o '$' garantem o acesso à pasta oculta diretamente pelo Explorador de Arquivos."
+                    },
+                    {
+                        text: "Digitar 'ping 192.168.1.15/Projetos_Seguros$' no prompt de comando.",
+                        correct: false,
+                        feedback: "INCORRETO! O comando 'ping' serve apenas para testar a conectividade ICMP e não aceita caminhos de pasta."
+                    }
+                ]
+            },
+            {
+                id: "TK-103",
+                title: "Erro de Permissão ao Salvar Arquivos em Rede (SMB vs NTFS)",
+                user: "Carlos (Financeiro - Bancada 08)",
+                desc: "Carlos consegue visualizar e abrir os relatórios na pasta de rede '\\\\192.168.1.20\\Financeiro', mas ao tentar salvar alterações em um arquivo, recebe a mensagem 'Acesso Negado'. A Partilha SMB está como 'Controle Total', mas a permissão NTFS está como 'Leitura'.",
+                host: "BANCADA-08",
+                ip: "192.168.1.80",
+                mask: "255.255.255.0",
+                gateway: "192.168.1.1",
+                tip: "Dica: Lembre-se da Regra de Ouro do Windows para combinação de permissões SMB (Partilha) + NTFS (Segurança).",
+                cliResponses: {
+                    "ipconfig": "\nAdaptador Ethernet Rede Local:\n   Endereço IPv4. . . . . . . . . . . . : 192.168.1.80\n   Gateway Padrao . . . . . . . . . . . : 192.168.1.1",
+                    "ping 192.168.1.20": "\nResposta de 192.168.1.20: bytes=32 tempo=2ms TTL=128\nResposta de 192.168.1.20: bytes=32 tempo=1ms TTL=128",
+                    "netstat -ano": "\nConexões ativas:\n  TCP    192.168.1.80:51200     192.168.1.20:445       ESTABLISHED     2048"
+                },
+                options: [
+                    {
+                        text: "Como a Partilha SMB é 'Controle Total', a permissão NTFS é ignorada pelo Windows.",
+                        correct: false,
+                        feedback: "INCORRETO! O Windows sempre valida ambas as camadas (SMB e NTFS) ao receber solicitações via rede."
+                    },
+                    {
+                        text: "O erro ocorre devido à 'Regra do Acesso Mais Restritivo'. Como o NTFS está configurado como 'Leitura', ele anula o Controle Total do SMB. Solução: Ajustar a permissão NTFS para 'Modificar' ou 'Gravação'.",
+                        correct: true,
+                        feedback: "PERFEITO! Pela Regra de Ouro da Segurança do Windows, quando o acesso é via rede, a combinação efetiva será sempre a MAIS RESTRITIVA entre SMB e NTFS."
+                    },
+                    {
+                        text: "O problema é que o cabo Cat6 está quebrado, permitindo apenas a leitura dos dados.",
+                        correct: false,
+                        feedback: "INCORRETO! Permissões de arquivo (SMB/NTFS) são regras lógicas do sistema operacional e não têm relação com dano físico no cabo."
+                    }
+                ]
+            },
+            {
+                id: "TK-104",
+                title: "Lentidão e Perda de Pacotes na Rota para a Nuvem",
+                user: "Roberto (Gerente de TI)",
+                desc: "Roberto relata que conexões com um servidor externo na internet estão instáveis e caindo. Ele precisa saber em qual roteador/salto exato intermediário está ocorrendo a perda de pacotes e lentidão.",
+                host: "BANCADA-ADMIN",
+                ip: "192.168.1.200",
+                mask: "255.255.255.0",
+                gateway: "192.168.1.1",
+                tip: "Dica: Compare as funções de 'tracert', 'pathping', 'netstat' e 'arp'. Qual comando analisa perdas de pacotes por salto estendido?",
+                cliResponses: {
+                    "tracert 200.160.2.3": "\nRastreando a rota para servidor-nuvem [200.160.2.3]\ncom no máximo 30 saltos:\n  1    1 ms    1 ms    1 ms  roteador-local [192.168.1.1]\n  2   12 ms   11 ms   13 ms  isp-gateway [10.200.0.1]\n  3   95 ms  120 ms  140 ms  backbone-sp [200.200.10.5]\n  4  150 ms   *       *      core-router [200.200.20.1]\n  5  190 ms  185 ms  195 ms  servidor-nuvem [200.160.2.3]",
+                    "pathping 200.160.2.3": "\nRastreando a rota para 200.160.2.3 durante 125 segundos...\n\nCalculando estatísticas há 125 segundos...\n            Origem até aqui   Este Salto\nSalto  RTT    Perdido/Enviado  Perdido/Enviado  Endereço\n  0                                             BANCADA-ADMIN [192.168.1.200]\n  1    1ms      0/ 100 =  0%     0/ 100 =  0%   192.168.1.1\n  2   12ms      0/ 100 =  0%     0/ 100 =  0%   10.200.0.1\n  3   95ms     35/ 100 = 35%    35/ 100 = 35%   200.200.10.5 [ALERTA: LENTIDÃO / PERDA]",
+                    "netstat -ano": "\nConexões ativas:\n  TCP    192.168.1.200:54321    200.160.2.3:443        ESTABLISHED     3120",
+                    "arp -a": "\nInterface: 192.168.1.200\n  Endereço de IP       Endereço Físico (MAC)   Tipo\n  192.168.1.1          00-11-22-33-44-55       dinâmico"
+                },
+                options: [
+                    {
+                        text: "Usar o comando 'arp -a' para limpar o cache MAC do roteador da operadora.",
+                        correct: false,
+                        feedback: "INCORRETO! O comando 'arp -a' apenas exibe a tabela local de associação entre IP e MAC (Camada 2) na rede local."
+                    },
+                    {
+                        text: "Usar o comando 'pathping 200.160.2.3', pois ele combina ping + tracert e calcula estatísticas detalhadas de porcentagem de perda de pacotes em cada salto intermediário.",
+                        correct: true,
+                        feedback: "SHOW DE BOLA! O 'pathping' é o utilitário perfeito para identificar gargalos e perdas percentuais prolongadas em saltos de roteamento."
+                    },
+                    {
+                        text: "Executar 'netstat -ano' para alterar a rota estática do provedor de internet.",
+                        correct: false,
+                        feedback: "INCORRETO! O 'netstat' lista conexões e portas TCP/UDP ativas na máquina local, sem alterar roteamento externo."
+                    }
+                ]
+            },
+            {
+                id: "TK-105",
+                title: "Chamado de Emergência: Suporte Técnico Remoto sem Instalar Softwares",
+                user: "Fernanda (Diretoria - Trabalho Remoto)",
+                desc: "Fernanda está em home office e precisa de ajuda urgente para configurar seu e-mail corporativo. Por questões de políticas restritivas do sistema, ela não pode baixar ou instalar softwares externos (como AnyDesk/TeamViewer).",
+                host: "LAPTOP-REMOTO",
+                ip: "177.18.90.12",
+                mask: "255.255.255.255",
+                gateway: "177.18.90.1",
+                tip: "Dica: Qual é a ferramenta nativa do Windows para prestação de suporte remoto rápido sem necessidade de instalação?",
+                cliResponses: {
+                    "ipconfig": "\nAdaptador de Rede sem Fio Wi-Fi:\n   Endereço IPv4. . . . . . . . . . . . : 177.18.90.12\n   Conexão com a Internet: Ativa e Operacional",
+                    "ping 8.8.8.8": "\nResposta de 8.8.8.8: bytes=32 tempo=15ms TTL=118"
+                },
+                options: [
+                    {
+                        text: "Solicitar que a usuária baixe o executável de um suporte remoto de terceiros e conceda privilégios de Administrador de Sistema.",
+                        correct: false,
+                        feedback: "INCORRETO! As políticas restritivas do laboratório/empresa impedem instalação de softwares sem credenciais de Admin."
+                    },
+                    {
+                        text: "Orientar a usuária a abrir o 'Assistência Rápida' (Quick Assist) nativo do Windows (atalho Ctrl + Win + N), gerar o código de acesso de 6 dígitos e autorizar a conexão de suporte.",
+                        correct: true,
+                        feedback: "SENSACIONAL! O Quick Assist (Assistência Rápida) é uma ferramenta nativa do Windows 10/11, altamente segura e que não exige instalação de adicionais!"
+                    },
+                    {
+                        text: "Mandar a usuária formatar o computador usando o comando 'ipconfig /release'.",
+                        correct: false,
+                        feedback: "INCORRETO! O comando 'ipconfig /release' apenas libera a concessão de IP no servidor DHCP e não formata o sistema."
+                    }
+                ]
+            }
+        ];
+
+        // Initialize Game
+        window.onload = function() {
+            loadMission(currentMissionIndex);
+        };
+
+        function loadMission(index) {
+            const m = missions[index];
+            
+            // Update Stats UI
+            document.getElementById('stat-mission').innerText = `${index + 1} / ${missions.length}`;
+            document.getElementById('stat-xp').innerText = scoreXp;
+            document.getElementById('stat-tickets').innerText = `${solvedTickets} / ${missions.length}`;
+
+            // Update Ticket Info
+            document.getElementById('ticket-id').innerText = `#${m.id}`;
+            document.getElementById('ticket-title').innerText = m.title;
+            document.getElementById('ticket-user').innerHTML = `<strong>Usuário:</strong> ${m.user}`;
+            document.getElementById('ticket-desc').innerText = m.desc;
+
+            // Update Specs
+            document.getElementById('spec-host').innerText = m.host;
+            document.getElementById('spec-ip').innerText = m.ip;
+            document.getElementById('spec-mask').innerText = m.mask;
+            document.getElementById('spec-gateway').innerText = m.gateway;
+
+            // Update Footer Tip
+            document.getElementById('footer-tip').innerText = m.tip;
+
+            // Clear Terminal Output
+            const output = document.getElementById('terminal-output');
+            output.innerHTML = `
+                <div class="text-slate-500">// CHAMADO #${m.id} CARREGADO NO TERMINAL</div>
+                <div class="text-cyan-400">// Digite um comando de diagnóstico CLI ou selecione uma opção técnica abaixo:</div>
+            `;
+
+            // Load Options
+            const optContainer = document.getElementById('options-container');
+            optContainer.innerHTML = '';
+
+            m.options.forEach((opt, optIndex) => {
+                const btn = document.createElement('button');
+                btn.className = "cyber-btn w-full text-left p-2.5 rounded-lg text-xs md:text-sm font-mono flex items-start gap-2.5 transition";
+                btn.onclick = () => submitSolution(optIndex);
+                btn.innerHTML = `
+                    <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30 text-xs">OPÇÃO ${optIndex + 1}</span>
+                    <span class="text-slate-300">${opt.text}</span>
+                `;
+                optContainer.appendChild(btn);
+            });
+        }
+
+        // Insert command from cheat-sheet buttons
+        function insertCommand(cmd) {
+            document.getElementById('cmd-input').value = cmd;
+            document.getElementById('cmd-input').focus();
+            playSound('type');
+        }
+
+        // Handle Form CLI execution
+        function handleCommandSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('cmd-input');
+            const rawCmd = input.value.trim();
+            if (!rawCmd) return;
+
+            const cmd = rawCmd.toLowerCase();
+            input.value = '';
+
+            const output = document.getElementById('terminal-output');
+            
+            // Print user command prompt line
+            const userLine = document.createElement('div');
+            userLine.className = "text-emerald-400 font-bold mt-2";
+            userLine.innerText = `C:\\Users\\NetRunner> ${rawCmd}`;
+            output.appendChild(userLine);
+
+            playSound('type');
+
+            // Find response in current mission database
+            const currentMission = missions[currentMissionIndex];
+            let responseText = null;
+
+            // Direct match or partial match
+            if (currentMission.cliResponses[cmd]) {
+                responseText = currentMission.cliResponses[cmd];
+            } else {
+                // Generic CLI Handler if command is not specifically overridden
+                if (cmd === 'help') {
+                    responseText = "Comandos CLI disponíveis: ipconfig, ipconfig /all, ping <ip>, tracert <ip>, pathping <ip>, netstat -ano, arp -a, cls/clear.";
+                } else if (cmd === 'cls' || cmd === 'clear') {
+                    output.innerHTML = '<div class="text-slate-500">// Terminal limpo.</div>';
+                    return;
+                } else if (cmd.startsWith('ping')) {
+                    responseText = `\nDisparando para o destino [${cmd.split(' ')[1] || '192.168.1.1'}] com 32 bytes de dados:\nResposta de ${cmd.split(' ')[1] || '192.168.1.1'}: bytes=32 tempo=2ms TTL=128\nResposta de ${cmd.split(' ')[1] || '192.168.1.1'}: bytes=32 tempo=1ms TTL=128\n\nPacotes: Enviados = 2, Recebidos = 2, Perdidos = 0 (0% de perda).`;
+                } else if (cmd.startsWith('ipconfig')) {
+                    responseText = `\nAdaptador Ethernet Local:\n   Endereço IPv4. . . . . . . . . . . . : ${currentMission.ip}\n   Mascara de Sub-rede . . . . . . . . . : ${currentMission.mask}\n   Gateway Padrao . . . . . . . . . . . : ${currentMission.gateway}`;
+                } else {
+                    responseText = `\n'${rawCmd}' não é reconhecido como um comando interno ou externo, um programa operável ou um arquivo em lotes. Digite 'help' para comandos.`;
+                }
+            }
+
+            // Print Output Response
+            const respBox = document.createElement('div');
+            respBox.className = "text-slate-300 whitespace-pre-wrap pl-2 border-l-2 border-cyan-500/40 my-1 font-mono text-xs";
+            respBox.innerText = responseText;
+            output.appendChild(respBox);
+
+            // Auto scroll to bottom
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Handle Solution Option Submission
+        function submitSolution(optionIndex) {
+            const currentMission = missions[currentMissionIndex];
+            const selectedOpt = currentMission.options[optionIndex];
+            const output = document.getElementById('terminal-output');
+
+            if (selectedOpt.correct) {
+                playSound('success');
+                scoreXp += 100;
+                solvedTickets += 1;
+
+                // Output Success Banner in Terminal
+                const successBox = document.createElement('div');
+                successBox.className = "p-3 bg-emerald-500/10 border border-emerald-500/40 rounded text-emerald-400 font-bold my-2 text-xs md:text-sm";
+                successBox.innerHTML = `
+                    <i class="fa-solid fa-circle-check me-1"></i> RESPOSTA CORRETA (+100 XP)!<br>
+                    <span class="font-normal text-slate-300">${selectedOpt.feedback}</span>
+                `;
+                output.appendChild(successBox);
+                output.scrollTop = output.scrollHeight;
+
+                // Disable options buttons temporarily
+                const btns = document.querySelectorAll('#options-container button');
+                btns.forEach(b => b.disabled = true);
+
+                // Advance to next mission after 2.5s
+                setTimeout(() => {
+                    currentMissionIndex++;
+                    if (currentMissionIndex < missions.length) {
+                        loadMission(currentMissionIndex);
+                    } else {
+                        showVictoryModal();
+                    }
+                }, 2500);
+
+            } else {
+                playSound('error');
+
+                // Output Error Banner in Terminal
+                const errorBox = document.createElement('div');
+                errorBox.className = "p-3 bg-pink-500/10 border border-pink-500/40 rounded text-pink-400 font-bold my-2 text-xs md:text-sm";
+                errorBox.innerHTML = `
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i> RESPOSTA INCORRETA!<br>
+                    <span class="font-normal text-slate-300">${selectedOpt.feedback}</span>
+                `;
+                output.appendChild(errorBox);
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+
+        function showVictoryModal() {
+            document.getElementById('modal-xp').innerText = scoreXp;
+            document.getElementById('victory-modal').classList.remove('hidden');
+            playSound('success');
+        }
+
+        function restartGame() {
+            currentMissionIndex = 0;
+            scoreXp = 0;
+            solvedTickets = 0;
+            document.getElementById('victory-modal').classList.add('hidden');
+            loadMission(0);
+        }
+    </script>
+</body>
+</html>
